@@ -1,9 +1,9 @@
-# Docker compose for TheHive and Cortex
+# Docker Compose for TheHive and Cortex
 
 > **IMPORTANT** all files in the `testing` folder are meant for prototyping, they **MUST NOT** be used in production
 
-This repository contains a docker compose file used to setup TheHive and Cortex on a server for testing purpose.
-Later versions will include production-ready compose files to deploy these containers on separate instances.
+This repository contains a Docker Compose file used to setup TheHive and Cortex on a server for testing purpose.
+Later versions will include production-ready Docker Compose files to deploy these containers on separate instances.
 
 
 ## Requirements
@@ -14,29 +14,61 @@ Hardware requirements:
 
 Software requirements:
 - Docker engine `v23.0.15` and later ([install instructions](https://docs.docker.com/engine/install/))
-- Docker compose plugin `v2.20.2` and later ([install instructions](https://docs.docker.com/compose/install/))
+- Docker Compose plugin `v2.20.2` and later ([install instructions](https://docs.docker.com/compose/install/))
 
 To verify that everything is properly installed, you can do the following commands:
 ```bash
-# Check docker engine version
+# Check Docker engine version
 docker version
 
-# Check that the current user can run docker commands
+# Check that the current user can run Docker commands
 # Else (for Linux) check out https://docs.docker.com/engine/install/linux-postinstall/
 docker run hello-world
 
-# Check docker compose plugin version
+# Check Docker Compose plugin version
 docker compose version
 ```
 
 
 ## Configuration
+### Structure
 
-Each Compose file runs Elasticsearch, Cassandra and TheHive.
+The testing Docker Compose file is based on the following structure:
+```
+├── cassandra
+│   ├── data
+│   └── logs
+├── cortex
+│   ├── config
+│   ├── logs
+│   └── neurons
+├── docker-compose.yml
+├── dot.env.template
+├── elasticsearch
+│   ├── data
+│   └── logs
+└── thehive
+    ├── config
+    ├── data
+    └── logs
+```
 
-* *Elasticsearch* database and logs are stored in Docker volumes
-* *Cassandra* database and logs are stored in Docker volumes
-* *TheHive* configuration, attachments and logs files are stored in `./thehive` folder.
+Here are the main takeaways:
+- The `dot.env.template` should be copied as `.env` and modify by the client (see [Usage](./README.md#usage))
+- TheHive and Cortex are configured using the files in the `config` folders
+- Every `config`, `data` and `logs` folder are synchronised with their associated container using [Docker bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
+    * Permission management of these folders is paramount to prevent errors (see [Permissions](./README.md#permissions))
+- Cortex is an exception with additional mountpoints:
+    * `/var/run/docker.sock` to allow Cortex access to the host's Docker daemon and launch containers
+    * `/tmp/cortex-jobs` (also in the command flags) for Cortex to store jobs
+
+
+### Permissions
+
+To simplify operations, we recommend to use the host's user in the containers (see [Usage](./README.md#usage)):
+- You should make sure that all `config`, `data` and `logs` folders are owned and writable by the host's user
+- In case of misconfiguration, clients may need to be sudoers to access / modify / remove data written by containers
+
 
 
 ## Usage
