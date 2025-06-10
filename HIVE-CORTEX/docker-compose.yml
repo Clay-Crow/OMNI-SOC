@@ -133,6 +133,59 @@ services:
       com.strangebee.version: "${thehive_image_version}"
       com.strangebee.dependency: "elasticsearch, cassandra"
 
+
+
+  cortex:
+    image: "thehiveproject/cortex:${cortex_image_version}"
+    container_name: cortex
+    hostname: cortex
+    restart: unless-stopped
+    environment:
+      - |
+        JAVA_OPTS=
+          -Xms4000M
+          -Xmx4000M
+          -XX:MaxMetaspaceSize=400m
+          -XX:ReservedCodeCacheSize=250m
+      - es_uri=http://elasticsearch:9200
+      - job_directory=/tmp/cortex-jobs
+      - docker_job_directory=${cortex_docker_job_directory}
+    volumes:
+      # Mounting docker socket in the container so that cortex can run jobs as containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Storing jobs under /tmp for now
+      - ./cortex/cortex-jobs:/tmp/cortex-jobs
+      - ./cortex/config:/etc/cortex:ro
+      - ./cortex/logs:/var/log/cortex
+      - ./cortex/neurons:/opt/cortexneurons
+    deploy:
+      resources:
+        limits:
+          memory: 5G
+          cpus: '4.000'
+    memswap_limit: 5G
+    networks:
+      - cortex-network
+    # ports:
+    #   - '0.0.0.0:9001:9001'
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -f cortex:9001/cortex/api/status || exit 1"]
+      start_period: 40s
+      interval: 10s
+      timeout: 1s
+      retries: 5
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    labels:
+      com.strangebee.stack: "cortex-stack"
+      com.strangebee.service: "cortex"
+      com.strangebee.role: "application"
+      com.strangebee.environment: "testing"
+      com.strangebee.version: "${cortex_image_version}"
+      com.strangebee.dependency: "elasticsearch"
+
+
   nginx:
     image: "nginx:${nginx_image_version}"
     container_name: nginx
